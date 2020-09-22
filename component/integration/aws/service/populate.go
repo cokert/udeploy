@@ -67,9 +67,12 @@ func populateInst(i app.Instance, scalableTargets []*applicationautoscaling.Scal
 		return i, state, err
 	}
 
-	i.Task.Definition = app.DefinitionFrom(td, i.Task.ImageTagEx)
+	i.Task.Definition, err = app.DefinitionFrom(td, i.Task.ImageTagEx)
+	if err != nil {
+		state.SetError(err)
+	}
 
-	state.Version = i.FormatVersion()
+	state.Version = i.Task.Definition.Version.Full()
 
 	stoppedTasks, err := getTaskDetails(svc, i, []*ecs.Task{}, "STOPPED", "")
 	if err != nil {
@@ -208,9 +211,17 @@ func getServiceError(tasks []*ecs.Task, expiration time.Duration) (int, error) {
 		if t.StopCode != nil && t.StoppedReason != nil {
 			if *t.StopCode != ecs.TaskStopCodeUserInitiated {
 
-				if time.Now().Sub(*t.ExecutionStoppedAt) < expiration {
-					reason = errors.New(*t.StoppedReason)
-					count++
+				switch *t.StopCode {
+				case ecs.TaskStopCodeTaskFailedToStart:
+					if time.Now().Sub(*t.CreatedAt) < expiration {
+						reason = errors.New(*t.StoppedReason)
+						count++
+					}
+				default:
+					if time.Now().Sub(*t.ExecutionStoppedAt) < expiration {
+						reason = errors.New(*t.StoppedReason)
+						count++
+					}
 				}
 			}
 		}

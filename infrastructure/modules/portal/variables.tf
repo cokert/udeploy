@@ -68,6 +68,13 @@ variable "record_name" {
 }
 
 variable "image" {
-  default = "quay.io/turner/udeploy:v0.30.0-rc.1"
+  default = "quay.io/turner/udeploy:v0.33.2-rc.18"
+}
+
+# Allow other AWS accounts to publish events
+# to this account for app status updates
+variable "linked_account_ids" {
+  type        = list(string)
+  default     = []
 }
 

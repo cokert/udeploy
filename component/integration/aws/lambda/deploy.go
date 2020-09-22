@@ -153,10 +153,17 @@ func isOldRevision(config *lambda.FunctionConfiguration, deployConfig *lambda.Fu
 		return false
 	}
 
-	oldVersion, oldBuild := version.Extract(*config.Description, regex)
-	newVersion, newBuild := version.Extract(*deployConfig.Description, regex)
+	oldVersion, err := version.Extract(*config.Description, regex)
+	if err != nil {
+		return false
+	}
 
-	return len(oldVersion) > 0 && newVersion == oldVersion && newBuild == oldBuild
+	newVersion, err := version.Extract(*deployConfig.Description, regex)
+	if err != nil {
+		return false
+	}
+
+	return len(oldVersion.Version) > 0 && newVersion.Version == oldVersion.Version && newVersion.Build == oldVersion.Build
 }
 
 func deleteOldRevisions(target app.Instance, deployVersion *lambda.FunctionConfiguration, svc *lambda.Lambda) error {

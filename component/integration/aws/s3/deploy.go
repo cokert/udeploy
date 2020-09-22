@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -22,6 +24,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/cloudfront"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
@@ -93,7 +96,29 @@ func Deploy(ctx mongo.SessionContext, actionID primitive.ObjectID, source app.In
 		return err
 	}
 
+	if len(target.CloudFrontID) > 0 {
+		return invalidateCache(target, session)
+	}
+
 	return nil
+}
+
+func invalidateCache(target app.Instance, session *session.Session) error {
+	now := time.Now().Format(time.RFC3339Nano)
+	svc := cloudfront.New(session)
+	input := &cloudfront.CreateInvalidationInput{
+		DistributionId: aws.String(target.CloudFrontID),
+		InvalidationBatch: &cloudfront.InvalidationBatch{
+			Paths: &cloudfront.Paths{
+				Items:    aws.StringSlice([]string{"/*"}),
+				Quantity: aws.Int64(1),
+			},
+			CallerReference: aws.String(now),
+		},
+	}
+
+	_, err := svc.CreateInvalidation(input)
+	return err
 }
 
 func createConfigFile(unzippedPath string, target app.Instance, env map[string]string) error {
@@ -282,12 +307,15 @@ func upload(target app.Instance, workingDir string, metadata map[string]*string,
 			key = fmt.Sprintf("%s/%s", target.S3Prefix, key)
 		}
 
+		contentType := mime.TypeByExtension(filepath.Ext(filePath))
+
 		objects = append(objects, s3manager.BatchUploadObject{
 			Object: &s3manager.UploadInput{
-				Key:      aws.String(key),
-				Bucket:   aws.String(target.S3Bucket),
-				Body:     file,
-				Metadata: metadata,
+				Key:         aws.String(key),
+				Bucket:      aws.String(target.S3Bucket),
+				Body:        file,
+				Metadata:    metadata,
+				ContentType: aws.String(contentType),
 			},
 		})
 

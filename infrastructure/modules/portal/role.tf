@@ -28,6 +28,18 @@ data "aws_iam_policy_document" "app_policy" {
   }
   statement {
     actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:CreateSecret",
+      "secretsmanager:UpdateSecret",
+      "secretsmanager:DeleteSecret",
+    ]
+
+    resources = [
+      "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.app}/${var.environment}/*",
+    ]
+  }
+  statement {
+    actions = [
       "sqs:*",
     ]
 
@@ -73,6 +85,9 @@ data "aws_iam_policy_document" "app_policy" {
       "s3:DeleteObject",
       "s3:ListBucket",
       "sts:AssumeRole",
+      "cloudfront:CreateInvalidation",
+      "cloudfront:GetInvalidation",
+      "cloudfront:ListInvalidations",      
     ]
 
     resources = [

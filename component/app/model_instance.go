@@ -25,6 +25,7 @@ type InstanceView struct {
 	S3Prefix         string `json:"s3Prefix,omitempty"`
 	S3RegistryBucket string `json:"s3RegistryBucket,omitempty"`
 	S3RegistryPrefix string `json:"s3RegistryPrefix,omitempty"`
+	CloudFrontID     string `json:"cloudFrontId,omitempty"`
 
 	Repository     string   `json:"repository,omitempty"`
 	RepositoryRole string   `json:"repositoryRole,omitempty"`
@@ -36,6 +37,7 @@ type InstanceView struct {
 	FormattedVersion string `json:"formattedVersion"`
 	Version          string `json:"version"`
 	Revision         int64  `json:"revision"`
+	Build            string `json:"build"`
 
 	Containers []ContainerView `json:"containers"`
 	Deployment DeploymentView  `json:"deployment"`
@@ -88,6 +90,7 @@ type Instance struct {
 	S3Prefix         string `json:"s3Prefix,omitempty" bson:"s3Prefix"`
 	S3RegistryBucket string `json:"s3RegistryBucket,omitempty" bson:"s3RegistryBucket"`
 	S3RegistryPrefix string `json:"s3RegistryPrefix,omitempty" bson:"s3RegistryPrefix"`
+	CloudFrontID     string `json:"cloudFrontId,omitempty" bson:"cloudFrontId"`
 
 	Repository     string `json:"repository,omitempty" bson:"repository"`
 	RepositoryRole string `json:"repositoryRole,omitempty" bson:"repositoryRole"`
@@ -199,6 +202,7 @@ func (v InstanceView) ToBusiness() Instance {
 		S3ConfigKey:      v.S3ConfigKey,
 		S3RegistryBucket: v.S3RegistryBucket,
 		S3RegistryPrefix: v.S3RegistryPrefix,
+		CloudFrontID:     v.CloudFrontID,
 		DeployCode:       v.DeployCode,
 		AutoPropagate:    v.AutoPropagate,
 		AutoScale:        v.AutoScale,
@@ -228,8 +232,8 @@ func (i Instance) ToView(name string, appClaim user.AppClaim) InstanceView {
 
 	v := InstanceView{
 		Name:             name,
-		FormattedVersion: i.FormatVersion(),
-		Version:          i.Version(),
+		FormattedVersion: i.Task.Definition.Version.Full(),
+		Version:          i.Task.Definition.Version.Version,
 		Containers:       []ContainerView{},
 		IsRunning:        i.CurrentState.IsRunning(),
 		CronExpression:   i.Task.CronExpression,
@@ -246,6 +250,7 @@ func (i Instance) ToView(name string, appClaim user.AppClaim) InstanceView {
 		S3ConfigKey:      i.S3ConfigKey,
 		S3RegistryBucket: i.S3RegistryBucket,
 		S3RegistryPrefix: i.S3RegistryPrefix,
+		CloudFrontID:     i.CloudFrontID,
 		Repository:       i.Repository,
 		RepositoryRole:   i.RepositoryRole,
 		DeployCode:       i.DeployCode,
@@ -267,11 +272,7 @@ func (i Instance) ToView(name string, appClaim user.AppClaim) InstanceView {
 		},
 	}
 
-	if v.Tokens == nil {
-		v.Tokens = map[string]string{}
-	}
-
-	v.Tokens["VERSION"] = i.Version()
+	v.Tokens = map[string]string{"VERSION": i.Task.Definition.Version.Version}
 
 	if v.Links == nil {
 		v.Links = []Link{}
@@ -289,6 +290,7 @@ func (i Instance) ToView(name string, appClaim user.AppClaim) InstanceView {
 		}
 	}
 
+	v.Build = i.Task.Definition.Version.Build
 	v.Revision = i.Task.Definition.Revision
 	v.DesiredCount = i.Task.DesiredCount
 
@@ -324,38 +326,4 @@ func (i Instance) RepoVersion() (string, string) {
 	}
 
 	return "", ""
-}
-
-// FormatVersion ...
-func (i Instance) FormatVersion() string {
-
-	if i.Task.Definition.Version == "" {
-		return "undetermined"
-	}
-
-	if len(i.Task.Definition.Build) > 0 {
-		return fmt.Sprintf("%s.%s", i.Task.Definition.Version, i.Task.Definition.Build)
-	}
-
-	return i.Task.Definition.Version
-}
-
-// Version ...
-func (i Instance) Version() string {
-
-	if i.Task.Definition.Version == "" {
-		return "undetermined"
-	}
-
-	return i.Task.Definition.Version
-}
-
-// Build ...
-func (i Instance) Build() string {
-
-	if i.Task.Definition.Build == "" {
-		return "undetermined"
-	}
-
-	return i.Task.Definition.Build
 }

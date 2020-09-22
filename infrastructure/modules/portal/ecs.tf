@@ -39,6 +39,11 @@ variable "ecs_autoscale_max_instances" {
 resource "aws_ecs_cluster" "app" {
   name = "${var.app}-${var.environment}"
   tags = var.tags
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
 }
 
 resource "aws_ecs_task_definition" "app" {
@@ -50,7 +55,7 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = aws_iam_role.ecsTaskExecutionRole.arn
 
   # defined in role.tf
-  task_role_arn =  aws_iam_role.app_role.arn
+  task_role_arn = aws_iam_role.app_role.arn
 
   container_definitions = <<DEFINITION
 [
@@ -75,6 +80,10 @@ resource "aws_ecs_task_definition" "app" {
         "value": "${var.health_check}"
       },
       {
+        "name": "APP",
+        "value": "${var.app}"
+      },
+      {
         "name": "ENVIRONMENT",
         "value": "${var.environment}"
       },
@@ -85,6 +94,10 @@ resource "aws_ecs_task_definition" "app" {
       {
         "name": "URL",
         "value": "https://${var.record_name}"
+      },
+      {
+        "name": "KMS_KEY_ID",
+        "value": "${aws_kms_key.config.id}"
       }
     ],
     "secrets": [
@@ -147,6 +160,10 @@ resource "aws_ecs_task_definition" "app" {
       {
         "valueFrom": "/${var.config_path}/OAUTH_REDIRECT_URL",
         "name": "OAUTH_REDIRECT_URL"
+      },
+      {
+        "valueFrom": "/${var.config_path}/OAUTH_SCOPES",
+        "name": "OAUTH_SCOPES"
       }
     ],
     "logConfiguration": {

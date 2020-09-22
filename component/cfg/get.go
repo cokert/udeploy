@@ -8,19 +8,22 @@ import (
 const (
 	missingEnvOk = "MISSING_ENV_OK"
 
+	app = "APP"
 	url = "URL"
 	env = "ENV"
 
 	dbURI  = "DB_URI"
 	dbName = "DB_NAME"
 
-	oauthClientID     = "OAUTH_CLIENT_ID"
-	oauthClientSecret = "OAUTH_CLIENT_SECRET"
-	oauthRedirectURL  = "OAUTH_REDIRECT_URL"
-	oauthSignOutURL   = "OAUTH_SIGN_OUT_URL"
-	oauthAuthURL      = "OAUTH_AUTH_URL"
-	oauthTokenURL     = "OAUTH_TOKEN_URL"
-	oauthSessSign     = "OAUTH_SESSION_SIGN"
+	oauthClientID           = "OAUTH_CLIENT_ID"
+	oauthClientSecret       = "OAUTH_CLIENT_SECRET"
+	oauthRedirectURL        = "OAUTH_REDIRECT_URL"
+	oauthSignOutURL         = "OAUTH_SIGN_OUT_URL"
+	oauthAuthURL            = "OAUTH_AUTH_URL"
+	oauthTokenURL           = "OAUTH_TOKEN_URL"
+	oauthSessSign           = "OAUTH_SESSION_SIGN"
+	oauthScopes             = "OAUTH_SCOPES"
+	oauthSignOutRedirectURL = "OAUTH_SIGN_OUT_REDIRECT_URL"
 
 	sqsChangeQueue = "SQS_CHANGE_QUEUE"
 	sqsAlarmQueue  = "SQS_ALARM_QUEUE"
@@ -31,6 +34,8 @@ const (
 	consoleLink = "CONSOLE_LINK"
 
 	preCache = "PRE_CACHE"
+
+	kmsKeyID = "KMS_KEY_ID"
 )
 
 // Get ...
@@ -41,7 +46,13 @@ func init() {
 
 	_, missingEnvAllowed := os.LookupEnv(missingEnvOk)
 
-	v, exists := os.LookupEnv(url)
+	v, exists := os.LookupEnv(app)
+	if !missingEnvAllowed && !exists {
+		log.Fatalf("environment variable %s required", app)
+	}
+	Get[app] = v
+
+	v, exists = os.LookupEnv(url)
 	if !missingEnvAllowed && !exists {
 		log.Fatalf("environment variable %s required", url)
 	}
@@ -143,4 +154,19 @@ func init() {
 		Get[preCache] = "false"
 	}
 
+	// optional environment variables
+	v, exists = os.LookupEnv(oauthScopes)
+	if exists {
+		Get[oauthScopes] = v
+	}
+
+	v, exists = os.LookupEnv(oauthSignOutRedirectURL)
+	if exists {
+		Get[oauthSignOutRedirectURL] = v
+	}
+
+	v, exists = os.LookupEnv(kmsKeyID)
+	if exists {
+		Get[kmsKeyID] = v
+	}
 }
